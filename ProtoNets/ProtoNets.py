@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def Sampling(X, Y, n_way, n_shot, n_query, class_sampling=False):
+def Sampling(X, Y, n_way, n_shot, n_query, class_sampling=True):
     """
     Randomly select support and query examples.
     
@@ -164,3 +164,151 @@ class protoNet(tf.keras.Model):
         return y_true, scores    
     
     
+def train(protonet, optimizer, X, Y, params={'n_way':5, 'n_shot':1, 'n_query':15}, epochs=1, print_every=5):
+    """
+    Train a prototypical network.
+    
+    Inputs:
+    -protonet: a prototypical network defined above
+    -optimizer: a TensorFlow Keras optimizer
+    -X: training images; numpy array of shape (N,H,W,C)
+    -Y: training labels; numpy array of shape (N,)
+    -params: parameters in the prototypical network; dictionary with keys n_way, n_shot and n_query
+    -epochs: number of epochs to run on X, where each epoch has ceiling X.shape[0]/(n_way*(n_shot+n_query)) steps 
+    -print_every: print the training process every print_every
+    
+    Outputs:
+    -loss_history, acc_history: lists of loss and accuracy at each epoch
+    """
+    n_way, n_shot, n_query = params['n_way'], params['n_shot'], params['n_query']
+    num_steps_per_epoch = int(np.ceil(X.shape[0]/(n_way*(n_shot+n_query))))
+        
+    loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    
+    train_loss_metric = tf.keras.metrics.Mean()
+    train_acc_metric = tf.keras.metrics.SparseCategoricalAccuracy()
+    
+    train_loss_history, train_acc_history = [], []
+    
+    t = 0
+    for epoch in range(epochs):
+        print("\nStart of epoch %d" % (epoch+1,))
+        
+        train_loss_metric.reset_states()
+        train_acc_metric.reset_states()
+        
+        for step in range(num_steps_per_epoch):           
+            X_support, X_query = Sampling(X, Y, n_way, n_shot, n_query, class_sampling=True)
+            
+            with tf.GradientTape() as tape:
+                y_true, scores = protonet(X_support, X_query, n_way, n_shot, n_query, is_training=True)
+                loss_value = loss_fn(y_true, scores)
+                
+            grads = tape.gradient(loss_value, protonet.trainable_weights)
+            optimizer.apply_gradients(zip(grads, protonet.trainable_weights))
+    
+            train_loss_metric.update_state(loss_value)
+            train_acc_metric.update_state(y_true, scores)
+              
+            if t % print_every == 0:
+                current_lr = optimizer._decayed_lr(tf.float32)
+                train_loss_step = train_loss_metric.result()
+                train_acc_step = train_acc_metric.result()
+                print('Step %d, Loss %.4f, ACC %.4f, lr %e' \
+                      %(t, float(train_loss_step), float(train_acc_step), current_lr))
+                
+            t += 1
+        
+        train_loss_epoch = train_loss_metric.result()
+        train_acc_epoch = train_acc_metric.result()
+        print('Epoch %d, Loss %.4f, ACC %.4f' \
+              %(epoch+1, float(train_loss_epoch), float(train_acc_epoch)))
+        
+        train_loss_history.append(train_loss_epoch)
+        train_acc_history.append(train_acc_epoch)
+        
+    return train_loss_history, train_acc_history
+
+
+def test(protonet, X, Y, params={'n_way':5, 'n_shot':1, 'n_query':15}, epochs=1, display_ppv_tpr=False):
+    """
+    Evaluate a trained prototypical network.
+    
+    Inputs:
+    -protonet: trained prototypical network
+    -X: testing images; numpy array of shape (N,H,W,C)
+    -Y: testing labels; numpy array of shape (N,)
+    -params: parameters in the prototypical network; dictionary with keys n_way, n_shot and n_query
+    -epochs: number of epochs to run on X, where each epoch has ceiling X.shape[0]/(n_way*(n_shot+n_query)) steps 
+    -display_ppv_tpr: boolean, whether or not display lists of ppv and tpr where the order in each list 
+    follow by the order in np.unique(Y)
+    
+    Outputs:
+    -loss_epochs, acc_epochs: lists of loss and accuracy at each epoch
+    -ppv_steps, tpr_steps: lists of ppv and tpr at each step if display_ppv_tpr=True
+    """
+    n_way, n_shot, n_query = params['n_way'], params['n_shot'], params['n_query']
+    num_steps_per_epoch = int(np.ceil(X.shape[0]/(n_way*(n_shot+n_query))))
+        
+    loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    
+    test_loss_metric = tf.keras.metrics.Mean()
+    test_acc_metric = tf.keras.metrics.SparseCategoricalAccuracy()
+    
+    loss_epochs, acc_epochs = [], []
+    ppv_steps, tpr_steps = [], []
+    
+    t = 1
+    for epoch in range(epochs):
+        print("\nStart of epoch %d" % (epoch+1,))
+        
+        test_loss_metric.reset_states()
+        test_acc_metric.reset_states()
+        
+        for step in range(num_steps_per_epoch):           
+            X_support, X_query = Sampling(X, Y, n_way, n_shot, n_query, class_sampling=False)
+            
+            y_true, scores = protonet(X_support, X_query, n_way, n_shot, n_query, is_training=False)
+            loss_value = loss_fn(y_true, scores)
+    
+            test_loss_metric.update_state(loss_value)
+            test_acc_metric.update_state(y_true, scores)
+            
+            ppv_step, tpr_step = [], []
+            y_pred = tf.argmax(scores, axis=1)
+            cf_matrix = tf.math.confusion_matrix(y_true, y_pred).numpy()
+            for i in range(n_way):
+                if np.sum(cf_matrix[:,i]) == 0:
+                    ppv_i = 0
+                else:
+                    ppv_i = cf_matrix[i,i] / np.sum(cf_matrix[:,i])
+                    
+                if np.sum(cf_matrix[i]) == 0:
+                    tpr_i = 0
+                else:
+                    tpr_i = cf_matrix[i,i] / np.sum(cf_matrix[i])
+                ppv_step.append(ppv_i)
+                tpr_step.append(tpr_i)
+
+            ppv_steps.append(ppv_step)
+            tpr_steps.append(tpr_step)
+            
+            t += 1
+     
+        test_loss_epoch = test_loss_metric.result()
+        test_acc_epoch = test_acc_metric.result()
+        print('Epoch %d, Loss %.4f, ACC %.4f' %(epoch+1, float(test_loss_epoch), float(test_acc_epoch)))
+        
+        loss_epochs.append(float(test_loss_epoch))
+        acc_epochs.append(float(test_acc_epoch))
+        
+    print('\nEpochs %d, Avg Loss %.4f, Avg ACC %.4f' %(epochs, np.mean(loss_epochs), np.mean(acc_epochs)))
+    
+    if display_ppv_tpr:
+        print('\nSteps %d' % t)
+        print('Avg PPVs:', np.mean(ppv_steps, axis=0))
+        print('Avg TPRs:', np.mean(tpr_steps, axis=0))
+        return loss_epochs, acc_epochs, ppv_steps, tpr_steps
+    
+    else:
+        return loss_epochs, acc_epochs
