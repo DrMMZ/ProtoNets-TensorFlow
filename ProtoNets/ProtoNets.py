@@ -265,8 +265,12 @@ def test(protonet, X, Y, params={'n_way':5, 'n_shot':1, 'n_query':15}, epochs=1,
         test_loss_metric.reset_states()
         test_acc_metric.reset_states()
         
-        for step in range(num_steps_per_epoch):           
-            X_support, X_query = Sampling(X, Y, n_way, n_shot, n_query, class_sampling=False)
+        for step in range(num_steps_per_epoch):
+            if display_ppv_tpr:
+                X_support, X_query = Sampling(X, Y, n_way, n_shot, n_query, class_sampling=False)
+            else:
+                X_support, X_query = Sampling(X, Y, n_way, n_shot, n_query, class_sampling=True)
+                
             
             y_true, scores = protonet(X_support, X_query, n_way, n_shot, n_query, is_training=False)
             loss_value = loss_fn(y_true, scores)
