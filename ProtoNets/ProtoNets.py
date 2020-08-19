@@ -109,7 +109,7 @@ def D2(X1, X2):
     return D    
     
     
- def forward(encoder, X_support, X_query, n_way, n_shot, n_query, is_training):
+def forward(encoder, X_support, X_query, n_way, n_shot, n_query, is_training):
     """
     Given the embedding function, compute the forward pass of an epsiode (or step, iteration) 
     in a prototypical network.
