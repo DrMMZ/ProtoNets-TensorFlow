@@ -18,7 +18,7 @@ The embedded images are in 1600-dimension. All models were trained for 120 epoch
 We trained `ProtoNets` on {3,5,10,15}-way, {1,5,10}-shot and 15-query, and validated on 3-way, {5,10,20,50}-shot and 15-query. The final model `{10-way, 5-shot, 15-query}-ProtoNet` is the one trained with 10-way, 5-shot and 15-query. 
 
 #### Results
-We trained the `{10-way, 5-shot, 15-query}-ProtoNet` 4 times with randomly sampled images. The results were computed on the test set on 3-way, 50-shot and 15-query, and provided by positive predictive value (PPV) and true positive rate (TPR) averaged over 100 epochs (or 901 steps).
+We trained the `{10-way, 5-shot, 15-query}-ProtoNet` 4 times with randomly sampled images. The results were computed on the test set on 3-way, 50-shot and 15-query, and provided by positive predictive value (PPV) and true positive rate (TPR) averaged over 901 steps.
 
 |1.|Normal|Pneumonia|COVID-19|
 |---|---|---|---|
