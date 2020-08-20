@@ -20,53 +20,24 @@ We trained `ProtoNets` on {3,5,10,15}-way, {1,5,10}-shot and 15-query, and valid
 #### Results
 We trained the `{10-way, 5-shot, 15-query}-ProtoNet` 4 times with randomly sampled images. The results were computed on the test set on 3-way, 50-shot and 15-query, and provided by positive predictive value (PPV) and true positive rate (TPR) averaged over 100 epochs (or 901 steps).
 
-* 1.
+|1.|Normal|Pneumonia|COVID-19|
+|---|---|---|---|
+|TPR (%)|87.1|80.9|85.5|
+|PPV (%)|83.8|81.6|90.1|
 
-| |TPR (%)| |
-|---|---|---|
-|Normal|Pneumonia|COVID-19|
-|87.1|80.9|85.5|
+|2.|Normal|Pneumonia|COVID-19|
+|---|---|---|---|
+|TPR (%)|84.5|78.0|83.8|
+|PPV (%)|84.0|76.7|87.9|
 
-| |PPV (%)| |
-|---|---|---|
-|Normal|Pneumonia|COVID-19|
-|83.8|81.6|90.1|
+|3.|Normal|Pneumonia|COVID-19|
+|---|---|---|---|
+|TPR (%)|85.5|80.5|76.3|
+|PPV (%)|82.6|76.5|86.3|
 
-* 2.
-
-| |TPR (%)| |
-|---|---|---|
-|Normal|Pneumonia|COVID-19|
-|84.5|78.0|83.8|
-
-| |PPV (%)| |
-|---|---|---|
-|Normal|Pneumonia|COVID-19|
-|84.0|76.7|87.9|
-
-* 3.
-
-| |TPR (%)| |
-|---|---|---|
-|Normal|Pneumonia|COVID-19|
-|85.5|80.5|76.3|
-
-| |PPV (%)| |
-|---|---|---|
-|Normal|Pneumonia|COVID-19|
-|82.6|76.5|86.3|
-
-* 4.
-
-| |TPR (%)| |
-|---|---|---|
-|Normal|Pneumonia|COVID-19|
-|86.9|79.8|84.5|
-
-| |PPV (%)| |
-|---|---|---|
-|Normal|Pneumonia|COVID-19|
-|84.9|79.9|88.5|
-
+|4.|Normal|Pneumonia|COVID-19|
+|---|---|---|---|
+|TPR (%)|86.9|79.8|84.5|
+|PPV (%)|84.9|79.9|88.5|
 
 The results do not represent the state-of-art on this dataset. See [Wang et al., COVID-Net: A Tailored Deep Convolutional Neural Network Design for Detection of COVID-19 Cases from Chest X-Ray Images](https://arxiv.org/abs/2003.09871). 
