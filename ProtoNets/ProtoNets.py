@@ -163,8 +163,23 @@ class protoNet(tf.keras.Model):
         y_true, scores = forward(self.encoder, X_support, X_query, n_way, n_shot, n_query, is_training)
         return y_true, scores    
     
+
+def EarlyStopping(LossList, patience=5):
+    if len(LossList)//patience < 2 :
+        return False
+    #Mean loss for last patience epochs and second-last patience epochs
+    mean_previous = np.mean(LossList[::-1][patience:2*patience]) #second-last
+    mean_recent = np.mean(LossList[::-1][:patience]) #last
     
-def train(protonet, optimizer, X, Y, params={'n_way':5, 'n_shot':1, 'n_query':15}, epochs=1, print_every=5):
+    delta = mean_recent - mean_previous
+    
+    if delta > 0 :
+        return True
+    else:
+        return False
+    
+    
+def train(protonet, optimizer, X, Y, params={'n_way':5, 'n_shot':1, 'n_query':15}, epochs=1, print_every=5, patience=5):
     """
     Train a prototypical network.
     
@@ -176,6 +191,7 @@ def train(protonet, optimizer, X, Y, params={'n_way':5, 'n_shot':1, 'n_query':15
     -params: parameters in the prototypical network; dictionary with keys n_way, n_shot and n_query
     -epochs: number of epochs to run on X, where each epoch has ceiling X.shape[0]/(n_way*(n_shot+n_query)) steps 
     -print_every: print the training process every print_every
+    -patience: number of epochs with no improvement after which training will be stopped
     
     Outputs:
     -loss_history, acc_history: lists of loss and accuracy at each epoch
@@ -192,7 +208,7 @@ def train(protonet, optimizer, X, Y, params={'n_way':5, 'n_shot':1, 'n_query':15
     
     t = 0
     for epoch in range(epochs):
-        print("\nStart of epoch %d" % (epoch+1,))
+        print("\nStart of epoch %d/%d" % (epoch, epochs))
         
         train_loss_metric.reset_states()
         train_acc_metric.reset_states()
@@ -211,7 +227,7 @@ def train(protonet, optimizer, X, Y, params={'n_way':5, 'n_shot':1, 'n_query':15
             train_acc_metric.update_state(y_true, scores)
               
             if t % print_every == 0:
-                current_lr = optimizer._decayed_lr(tf.float32)
+                current_lr = optimizer._decayed_lr(tf.float32).numpy()
                 train_loss_step = train_loss_metric.result()
                 train_acc_step = train_acc_metric.result()
                 print('Step %d, Loss %.4f, ACC %.4f, lr %e' \
@@ -227,12 +243,17 @@ def train(protonet, optimizer, X, Y, params={'n_way':5, 'n_shot':1, 'n_query':15
         train_loss_history.append(train_loss_epoch)
         train_acc_history.append(train_acc_epoch)
         
+        stopEarly = EarlyStopping(train_loss_history, patience)
+        if stopEarly:
+            print("\nStop early at epoch %d/%d" % (epoch, epochs))
+            break
+        
     return train_loss_history, train_acc_history
 
 
 def test(protonet, X, Y, params={'n_way':5, 'n_shot':1, 'n_query':15}, epochs=1, display_ppv_tpr=False):
     """
-    Evaluate a trained prototypical network.
+    Evaluate a trained prototypical network classifier.
     
     Inputs:
     -protonet: trained prototypical network
